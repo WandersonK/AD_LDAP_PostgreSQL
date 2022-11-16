@@ -1,11 +1,12 @@
 from credentials import db_auth as cpg
-import psycopg
+import psycopg2
 import connect_ldap
+
 
 def comp_pgldap(username_ldap, groupuser_ldap):
     # data_insert = ''
     verify = 1
-    connection_pg = psycopg.connect(
+    connection_pg = psycopg2.connect(
         host=cpg.get('host_pg'), 
         port=cpg.get('port_pg'), 
         dbname=cpg.get('database_pg'), 
@@ -49,13 +50,15 @@ def comp_pgldap(username_ldap, groupuser_ldap):
 
     connection_pg.close()
 
+
 for i1 in connect_ldap.conn_ldap.entries:
     user_name = i1.sAMAccountName
     
-    for i2 in i1.memberOf:
-        grupos = i2.split(',')
-        
-        for i3 in grupos:
-            if i3.startswith('CN=') and not i3.startswith(connect_ldap.gps_discard_ldap):
-                group_user = i3.split('=')[1]
-                comp_pgldap(user_name, group_user)
+    if i1.userAccountControl not in (514, 546, 66050, 66082):
+        for i2 in i1.memberOf:
+            grupos = i2.split(',')
+            
+            for i3 in grupos:
+                if i3.startswith('CN=') and not i3.startswith(connect_ldap.gps_discard_ldap):
+                    group_user = i3.split('=')[1]
+                    comp_pgldap(user_name, group_user)

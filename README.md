@@ -27,5 +27,5 @@ ldap_auth = {
 
 Pacotes necessário:
 
-* pip install psycopg
+* pip install psycopg2
 * pip install ldap3
