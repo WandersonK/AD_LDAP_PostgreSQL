@@ -1,18 +1,19 @@
 from credentials import db_auth as cpg
 import psycopg2
 import connect_ldap
+from threading import Thread, enumerate
 
+connection_pg = psycopg2.connect(
+    host=cpg.get('host_pg'), 
+    port=cpg.get('port_pg'), 
+    dbname=cpg.get('database_pg'), 
+    user=cpg.get('user_pg'), 
+    password=cpg.get('pass_pg')
+)
 
 def comp_pgldap(username_ldap, groupuser_ldap):
-    # data_insert = ''
+    data_insert = ''
     verify = 1
-    connection_pg = psycopg2.connect(
-        host=cpg.get('host_pg'), 
-        port=cpg.get('port_pg'), 
-        dbname=cpg.get('database_pg'), 
-        user=cpg.get('user_pg'), 
-        password=cpg.get('pass_pg')
-    )
     
     cur = connection_pg.cursor()
     
@@ -31,12 +32,13 @@ def comp_pgldap(username_ldap, groupuser_ldap):
     
     for r_user in res_users:
         if username_ldap in r_user and r_user[1] == 'Y':
+            print(username_ldap)
             
             for r_group in res_groups:
                 if groupuser_ldap in r_group:
                     
                     for r_user_group in res_users_groups:
-                        # data_insert = f'{username_ldap}, {r_group[1]}'
+                        data_insert = f'{username_ldap}, {r_group[1]}'
                         sql_insert = f"INSERT INTO {cpg.get('schema')}.sec_users_groups (login, group_id) VALUES ('{username_ldap}', {r_group[1]})"
                         verify = 0
                         if username_ldap == r_user_group[0] and r_group[1] == r_user_group[1]:
@@ -44,11 +46,10 @@ def comp_pgldap(username_ldap, groupuser_ldap):
                             break
                         
             if verify == 0:
-                # print(data_insert)
+                print(data_insert)
                 cur.execute(sql_insert)
                 connection_pg.commit()
 
-    connection_pg.close()
 
 
 for i1 in connect_ldap.conn_ldap.entries:
@@ -61,4 +62,12 @@ for i1 in connect_ldap.conn_ldap.entries:
             for i3 in grupos:
                 if i3.startswith('CN=') and not i3.startswith(connect_ldap.gps_discard_ldap):
                     group_user = i3.split('=')[1]
-                    comp_pgldap(user_name, group_user)
+                    # comp_pgldap(user_name, group_user)
+                    Thread(target=comp_pgldap, args=(user_name, group_user)).start()
+
+
+threads = enumerate()
+for thread in threads[1:]:
+    thread.join()
+
+connection_pg.close()
